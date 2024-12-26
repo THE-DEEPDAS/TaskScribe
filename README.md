@@ -48,13 +48,20 @@ npm start
 
 ## Configuration
 
-Update `config.js` with your Azure credentials:
+1. Copy `config.example.js` to `config.js`:
+```bash
+cp config.example.js config.js
+```
+
+2. Update `config.js` with your Azure credentials:
 ```javascript
 const config = {
     azureKey: 'YOUR_AZURE_SUBSCRIPTION_KEY',
     azureRegion: 'YOUR_AZURE_REGION'
 };
 ```
+
+Note: `config.js` is gitignored to prevent accidentally committing sensitive credentials.
 
 ## Task Detection
 

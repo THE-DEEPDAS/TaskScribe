@@ -6,19 +6,44 @@ class LiveCallTaskNoter {
         this.audioConfig = null;
         this.setupAzureSpeech();
         this.setupUI();
+        this.languageSelect = document.getElementById('languageSelect');
     }
 
     setupAzureSpeech() {
         try {
+            if (!window.SpeechSDK) {
+                throw new Error('Speech SDK not loaded. Check your internet connection.');
+            }
+
             if (!config.azureKey || !config.azureRegion) {
                 throw new Error('Azure credentials not configured');
             }
-            this.speechConfig = SpeechSDK.SpeechConfig.fromSubscription(config.azureKey, config.azureRegion);
-            this.speechConfig.speechRecognitionLanguage = 'en-US';
-            this.status.textContent = 'Speech SDK initialized';
+
+            // Create speech configuration
+            this.speechConfig = window.SpeechSDK.SpeechConfig.fromSubscription(
+                config.azureKey, 
+                config.azureRegion
+            );
+
+            // Set initial language
+            this.updateSpeechLanguage();
+            
+            // Listen for language changes
+            this.languageSelect.addEventListener('change', () => this.updateSpeechLanguage());
+            
+            this.status.textContent = 'Ready to record';
+            this.status.className = 'success';
         } catch (err) {
             console.error('Speech SDK initialization failed:', err);
-            this.status.textContent = 'Failed to initialize speech recognition';
+            this.status.textContent = `Error: ${err.message}`;
+            this.status.className = 'error';
+            this.startBtn.disabled = true;
+        }
+    }
+
+    updateSpeechLanguage() {
+        if (this.speechConfig) {
+            this.speechConfig.speechRecognitionLanguage = this.languageSelect.value;
         }
     }
 
@@ -38,51 +63,66 @@ class LiveCallTaskNoter {
                 throw new Error('Speech config not initialized');
             }
 
-            this.status.textContent = 'Requesting microphone access...';
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // Request microphone permission first
+            await navigator.mediaDevices.getUserMedia({ audio: true });
             
-            this.audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
-            this.recognizer = new SpeechSDK.SpeechRecognizer(this.speechConfig, this.audioConfig);
+            // Create audio config and recognizer
+            this.audioConfig = window.SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+            this.recognizer = new window.SpeechSDK.SpeechRecognizer(
+                this.speechConfig, 
+                this.audioConfig
+            );
 
-            this.recognizer.recognizing = (s, e) => {
-                this.status.textContent = 'Recognizing...';
-                console.log('Recognizing:', e.result.text);
-            };
+            // Set up recognition handlers
+            this.setupRecognitionHandlers();
 
-            this.recognizer.recognized = (s, e) => {
-                if (e.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
-                    console.log('Recognized:', e.result.text);
-                    this.processTranscript(e.result.text);
+            // Start recognition
+            this.recognizer.startContinuousRecognitionAsync(
+                () => {
+                    this.isRecording = true;
+                    this.startBtn.disabled = true;
+                    this.stopBtn.disabled = false;
+                    this.status.textContent = 'Recording...';
+                    this.status.className = 'recording';
+                },
+                (error) => {
+                    console.error('Error starting recognition:', error);
+                    this.status.textContent = `Failed to start recording: ${error.message || 'Unknown error'}`;
+                    this.status.className = 'error';
                 }
-            };
+            );
 
-            this.recognizer.canceled = (s, e) => {
-                console.log('Canceled:', e);
-                this.status.textContent = `Recognition canceled: ${e.errorDetails}`;
-                this.stopRecording();
-            };
-
-            await new Promise((resolve, reject) => {
-                this.recognizer.startContinuousRecognitionAsync(
-                    () => {
-                        this.isRecording = true;
-                        this.startBtn.disabled = true;
-                        this.stopBtn.disabled = false;
-                        this.status.textContent = 'Recording started';
-                        resolve();
-                    },
-                    (err) => {
-                        reject(err);
-                    }
-                );
-            });
-            
         } catch (err) {
-            console.error('Error starting recognition:', err);
-            this.status.textContent = `Error: ${err.message}`;
-            this.startBtn.disabled = false;
-            this.stopBtn.disabled = true;
+            console.error('Error accessing microphone:', err);
+            this.status.textContent = `Microphone error: ${err.message}`;
+            this.status.className = 'error';
         }
+    }
+
+    setupRecognitionHandlers() {
+        this.recognizer.recognizing = (s, e) => {
+            console.log('Recognizing:', e.result.text);
+            this.status.textContent = 'Recognizing...';
+        };
+
+        this.recognizer.recognized = (s, e) => {
+            if (e.result.reason === window.SpeechSDK.ResultReason.RecognizedSpeech) {
+                console.log('Recognized:', e.result.text);
+                this.processTranscript(e.result.text);
+            }
+        };
+
+        this.recognizer.canceled = (s, e) => {
+            console.log('Canceled:', e);
+            this.status.textContent = `Recognition canceled: ${e.errorDetails}`;
+            this.status.className = 'error';
+            this.stopRecording();
+        };
+
+        this.recognizer.sessionStopped = (s, e) => {
+            console.log('Session stopped');
+            this.stopRecording();
+        };
     }
 
     stopRecording() {
@@ -151,11 +191,13 @@ class LiveCallTaskNoter {
     }
 }
 
-// Initialize the application
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize only after DOM and Speech SDK are loaded
+window.onload = () => {
     if (!window.SpeechSDK) {
-        document.getElementById('status').textContent = 'Speech SDK not loaded';
+        document.getElementById('status').textContent = 'Error: Speech SDK not loaded';
+        document.getElementById('status').className = 'error';
+        document.getElementById('startBtn').disabled = true;
         return;
     }
     const taskNoter = new LiveCallTaskNoter();
-});
+};
