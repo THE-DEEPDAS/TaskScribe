@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Live Call Task Noter</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Live Call Task Noter</h1>
+        <button id="startBtn">Start Recording</button>
+        <button id="stopBtn" disabled>Stop Recording</button>
+        <div id="status">Not recording</div>
+        <div id="detectedTasks">
+            <h2>Detected Tasks</h2>
+            <ul id="taskList"></ul>
+        </div>
+    </div>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

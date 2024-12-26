@@ -1,0 +1,10 @@
+{
+    "name": "Live Call Task Noter",
+    "version": "1.0",
+    "description": "Automatically detect and note tasks from live calls",
+    "permissions": [
+        "microphone",
+        "storage"
+    ],
+    "manifest_version": 2
+}
