@@ -15,10 +15,48 @@ button {
     margin: 20px 0;
     padding: 10px;
     background-color: #f0f0f0;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+#status.error {
+    background-color: #ffecec;
+    color: #dc3545;
+}
+
+#status.success {
+    background-color: #d4edda;
+    color: #28a745;
 }
 
 #detectedTasks {
     margin-top: 20px;
     border: 1px solid #ccc;
     padding: 20px;
+}
+
+.recording {
+    background-color: #ffecec;
+    border-radius: 4px;
+    padding: 10px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+#taskList li {
+    padding: 10px;
+    margin: 5px 0;
+    background-color: #f8f9fa;
+    border-left: 3px solid #007bff;
+    animation: slideIn 0.3s ease-in-out;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(-10px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
 }

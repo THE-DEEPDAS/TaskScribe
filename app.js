@@ -3,14 +3,23 @@ class LiveCallTaskNoter {
         this.isRecording = false;
         this.speechConfig = null;
         this.recognizer = null;
+        this.audioConfig = null;
         this.setupAzureSpeech();
         this.setupUI();
     }
 
     setupAzureSpeech() {
-        this.speechConfig = SpeechSDK.SpeechConfig.fromSubscription(config.azureKey, config.azureRegion);
-        this.speechConfig.speechRecognitionLanguage = 'en-US';
-        this.speechConfig.enableDictation();
+        try {
+            if (!config.azureKey || !config.azureRegion) {
+                throw new Error('Azure credentials not configured');
+            }
+            this.speechConfig = SpeechSDK.SpeechConfig.fromSubscription(config.azureKey, config.azureRegion);
+            this.speechConfig.speechRecognitionLanguage = 'en-US';
+            this.status.textContent = 'Speech SDK initialized';
+        } catch (err) {
+            console.error('Speech SDK initialization failed:', err);
+            this.status.textContent = 'Failed to initialize speech recognition';
+        }
     }
 
     setupUI() {
@@ -25,35 +34,75 @@ class LiveCallTaskNoter {
 
     async startRecording() {
         try {
-            const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
-            this.recognizer = new SpeechSDK.SpeechRecognizer(this.speechConfig, audioConfig);
+            if (!this.speechConfig) {
+                throw new Error('Speech config not initialized');
+            }
+
+            this.status.textContent = 'Requesting microphone access...';
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
+            this.audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+            this.recognizer = new SpeechSDK.SpeechRecognizer(this.speechConfig, this.audioConfig);
+
+            this.recognizer.recognizing = (s, e) => {
+                this.status.textContent = 'Recognizing...';
+                console.log('Recognizing:', e.result.text);
+            };
 
             this.recognizer.recognized = (s, e) => {
                 if (e.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
+                    console.log('Recognized:', e.result.text);
                     this.processTranscript(e.result.text);
                 }
             };
 
-            this.recognizer.startContinuousRecognitionAsync();
-            this.isRecording = true;
-            
-            this.startBtn.disabled = true;
-            this.stopBtn.disabled = false;
-            this.status.textContent = 'Recording...';
+            this.recognizer.canceled = (s, e) => {
+                console.log('Canceled:', e);
+                this.status.textContent = `Recognition canceled: ${e.errorDetails}`;
+                this.stopRecording();
+            };
+
+            await new Promise((resolve, reject) => {
+                this.recognizer.startContinuousRecognitionAsync(
+                    () => {
+                        this.isRecording = true;
+                        this.startBtn.disabled = true;
+                        this.stopBtn.disabled = false;
+                        this.status.textContent = 'Recording started';
+                        resolve();
+                    },
+                    (err) => {
+                        reject(err);
+                    }
+                );
+            });
             
         } catch (err) {
             console.error('Error starting recognition:', err);
+            this.status.textContent = `Error: ${err.message}`;
+            this.startBtn.disabled = false;
+            this.stopBtn.disabled = true;
         }
     }
 
     stopRecording() {
         if (this.recognizer) {
-            this.recognizer.stopContinuousRecognitionAsync();
-            this.isRecording = false;
-            
-            this.startBtn.disabled = false;
-            this.stopBtn.disabled = true;
-            this.status.textContent = 'Not recording';
+            this.recognizer.stopContinuousRecognitionAsync(
+                () => {
+                    this.isRecording = false;
+                    this.startBtn.disabled = false;
+                    this.stopBtn.disabled = true;
+                    this.status.textContent = 'Recording stopped';
+                    
+                    // Cleanup
+                    this.recognizer.close();
+                    this.recognizer = null;
+                },
+                (err) => {
+                    console.error('Error stopping recognition:', err);
+                    this.status.textContent = 'Error stopping recording';
+                }
+            );
         }
     }
 
@@ -104,5 +153,9 @@ class LiveCallTaskNoter {
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
+    if (!window.SpeechSDK) {
+        document.getElementById('status').textContent = 'Speech SDK not loaded';
+        return;
+    }
     const taskNoter = new LiveCallTaskNoter();
 });

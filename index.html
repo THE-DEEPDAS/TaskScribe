@@ -7,14 +7,23 @@
 </head>
 <body>
     <div class="container">
-        <h1>Live Call Task Noter</h1>
-        <button id="startBtn">Start Recording</button>
-        <button id="stopBtn" disabled>Stop Recording</button>
+        <h1>TaskScribe</h1>
+        <div class="controls">
+            <select id="languageSelect">
+                <option value="en-US">English (US)</option>
+                <option value="es-ES">Spanish (Spain)</option>
+                <option value="fr-FR">French (France)</option>
+                <option value="de-DE">German (Germany)</option>
+            </select>
+            <button id="startBtn">Start Recording</button>
+            <button id="stopBtn" disabled>Stop Recording</button>
+        </div>
         <div id="status">Not recording</div>
         <div id="detectedTasks">
             <h2>Detected Tasks</h2>
             <ul id="taskList"></ul>
         </div>
+        <button id="exportBtn">Export Tasks</button>
     </div>
     <script src="config.js"></script>
     <script src="app.js"></script>
