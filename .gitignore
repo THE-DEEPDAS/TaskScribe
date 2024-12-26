@@ -1,1 +1,19 @@
+# Dependency directories
 node_modules/
+
+# Environment variables
+.env
+
+# Azure configuration with sensitive credentials
+config.js
+
+# Generated files
+Tasks.txt
+
+# Logs
+*.log
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
